@@ -33,8 +33,8 @@ def _colored(text: str, color: str = None, bright: bool = False) -> str:
 def print_banner():
     term_width = get_terminal_size((80, 20)).columns
     w = min(66, max(40, term_width - 10))
-    title = "Borsa İstanbul Hisse Analiz ve Tavsiye Programı"
-    subtitle = "Portföy Yönetim Konsolu"
+    title = "BAHTİYAR PORTFÖY YÖNETİM SİSTEMİ"
+    subtitle = "Gelişmiş Analiz ve Tavsiye Motoru ile Akıllı Yatırım Asistanınız"
     top = "╔" + "═" * w + "╗"
     bottom = "╚" + "═" * w + "╝"
     print(_colored(top, 'cyan', True))
