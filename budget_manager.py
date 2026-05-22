@@ -47,7 +47,7 @@ def save_portfolio(portfolio):
 
 def delete_profile(name):
     b_file = f"{name}_butce.json"
-    l_file = f"{name}_islem_gecmisi.md"
+    l_file = f"{name}_islem_gecmisi.txt"
     if os.path.exists(b_file):
         os.remove(b_file)
     if os.path.exists(l_file):

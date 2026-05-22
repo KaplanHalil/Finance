@@ -67,3 +67,18 @@ Kullanıcının programı rahatça kullanabilmesi için komut satırı menüsü 
 ## 14. BIST 100 Entegrasyonu ve Veri Kontrolü [TAMAMLANDI]
 - BIST30 olan analiz havuzunun BIST100 listesine çıkarılması.
 - Veri çekimi işlemi sonrasında kaç hissenin verisinin başarıyla indirildiğinin (Örn: 98/100) ekrana yazdırılması.
+
+## 15. Loglama Altyapısının Geliştirilmesi (TXT Formatı ve Anlık Değerleme) [TAMAMLANDI]
+- Markdown (`.md`) formatında tutulan dar yapılı işlem geçmişinin, okunabilirliği çok daha yüksek, hizalanmış bir ASCII Tablo (`.txt`) formatına dönüştürülmesi.
+- Eski `.md` kayıtlarının program başlarken otomatik olarak okunup hatasızca yeni `.txt` yapısına çevrilmesi.
+- 3. Menüden portföy incelendiğinde; mevcut toplam portföy değerinin ve genel Kar/Zarar tutarının hesaplanıp, "Portföy Değerlemesi" adıyla işlem geçmişine otomatik olarak eklenmesi.
+
+## 16. Gelişmiş Teknik Analiz Motoru [TAMAMLANDI]
+- Ağırlıklı puanlama sistemi (Maks 10 puan) ile kriter sayısının 3'ten 7'ye çıkarılması.
+- Yeni göstergeler: Bollinger Bantları (sıkışma tespiti), Stochastic Oscillator, Hacim (Volume) doğrulaması, Golden Cross / Death Cross (SMA50 vs SMA200).
+- RSI eşiklerinin profesyonel seviyelere güncellenmesi (30/40/70/80).
+- MACD için "taze kesişim" (crossover) tespiti ile güçlü sinyal ayrımı.
+- Sinyal gücü derecelendirmesi: Güçlü / Orta / Zayıf.
+- Satış kararı için 3 kademe: "Güçlü Tut", "Dikkatli Tut", "Sat".
+- Veri çekme periyodunun SMA200 desteği için 3 aydan 1 yıla çıkarılması.
+- Top 5 yerine en iyi 10 hissenin gösterilmesi.

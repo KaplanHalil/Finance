@@ -12,8 +12,10 @@ def print_separator():
 def migrate_old_data():
     if os.path.exists("butce.json") and not os.path.exists("default_butce.json"):
         os.rename("butce.json", "default_butce.json")
-    if os.path.exists("islem_gecmisi.md") and not os.path.exists("default_islem_gecmisi.md"):
+    if os.path.exists("islem_gecmisi.md") and not os.path.exists("default_islem_gecmisi.md") and not os.path.exists("default_islem_gecmisi.txt"):
         os.rename("islem_gecmisi.md", "default_islem_gecmisi.md")
+    if os.path.exists("islem_gecmisi.txt") and not os.path.exists("default_islem_gecmisi.txt"):
+        os.rename("islem_gecmisi.txt", "default_islem_gecmisi.txt")
 
 def init_profile():
     print_separator()
@@ -75,9 +77,10 @@ def main():
         print("3. Portföyümü Görüntüle ve Sat/Tut Tavsiyeleri Al")
         print("4. Portföye Manuel Hisse Ekle")
         print("5. Mevcut Portföyü Sıfırla veya Sil")
-        print("6. Çıkış / Diğer Portföye Geç")
+        print("6. Diğer Portföye Geç")
+        print("7. Çıkış")
         
-        choice = input("\nSeçiminiz (1/2/3/4/5/6): ")
+        choice = input("\nSeçiminiz (1/2/3/4/5/6/7): ")
         
         if choice == '1':
             try:
@@ -113,8 +116,8 @@ def main():
                 continue
                 
             print("\n*** POTANSİYEL HİSSELERE AİT TEKNİK ANALİZ SONUÇLARI ***")
-            for r in recommendations[:5]:
-                print(f"- {r['Hisse']:<6}: Fiyat={r['Fiyat']:.2f} TL | Skor={r['Skor']}/3 | Neden: {r['Nedenler']}")
+            for r in recommendations[:10]:
+                print(f"- {r['Hisse']:<6}: Fiyat={r['Fiyat']:.2f} TL | Skor={r['Skor']}/{10} | Sinyal: {r['Sinyal']} | Neden: {r['Nedenler']}")
                 
             print("\nBütçenize göre portföy oluşturuluyor...")
             allocations, remaining = allocate_budget(budget, recommendations)
@@ -187,6 +190,7 @@ def main():
             
             satilacaklar = []
             toplam_portfoy_degeri = 0
+            toplam_maliyet = 0
             
             for ev in evaluations:
                 hisse = ev['Hisse']
@@ -198,16 +202,27 @@ def main():
                 neden = ev['Nedenler']
                 
                 guncel_tutar = lot * fiyat
+                hisse_maliyeti = lot * maliyet
+                
                 toplam_portfoy_degeri += guncel_tutar
+                toplam_maliyet += hisse_maliyeti
                 
                 print(f"Hisse: {hisse:<5} | Lot: {lot:<4} | Maliyet: {maliyet:>6.2f} | Güncel: {fiyat:>6.2f} | K/Z: %{k_z:>5.2f}")
                 print(f"   -> TAVSİYE: {durum} (Neden: {neden})")
                 print("-" * 70)
                 
-                if durum == 'Sat':
+                if durum in ['Sat', 'Dikkatli Tut']:
                     satilacaklar.append(ev)
-                    
-            print(f"Portföydeki Hisselerin Toplam Değeri: {toplam_portfoy_degeri:.2f} TL")
+            
+            genel_kz_tl = toplam_portfoy_degeri - toplam_maliyet
+            genel_kz_yuzde = (genel_kz_tl / toplam_maliyet) * 100 if toplam_maliyet > 0 else 0
+            
+            print(f"Portföydeki Hisselerin Toplam Maliyeti: {toplam_maliyet:.2f} TL")
+            print(f"Portföydeki Hisselerin Güncel Toplam Değeri: {toplam_portfoy_degeri:.2f} TL")
+            print(f"Genel Portföy K/Z Durumu: {genel_kz_tl:+.2f} TL (%{genel_kz_yuzde:+.2f})")
+            print("=" * 70)
+            
+            log_transaction("Portföy Değerlemesi", "-", "-", "-", toplam_portfoy_degeri, budget, genel_kz_tl, genel_kz_yuzde)
             
             sat_cevap = input("\nPortföyünüzdeki herhangi bir hisseyi satmak ister misiniz? (E/H): ").strip().upper()
             if sat_cevap == 'E':
@@ -321,6 +336,10 @@ def main():
                 print("İşlem iptal edildi.")
 
         elif choice == '6':
+            print(f"\n[{active_profile.upper()}] portföyünden çıkılıyor...")
+            active_profile = init_profile()
+
+        elif choice == '7':
             print("Programdan çıkılıyor. Bol kazançlar!")
             sys.exit(0)
         else:

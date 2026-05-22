@@ -17,7 +17,7 @@ BIST_STOCKS = [
     "TUPRS.IS", "ULKER.IS", "VAKBN.IS", "VESBE.IS", "VESTL.IS", "YEOTK.IS", "YKBNK.IS", "YYLGD.IS", "ZOREN.IS", "KZBGY.IS"
 ]
 
-def fetch_data(stock_list=None, period="3mo"):
+def fetch_data(stock_list=None, period="1y"):
     if stock_list is None:
         stock_list = BIST_STOCKS
     data = {}
