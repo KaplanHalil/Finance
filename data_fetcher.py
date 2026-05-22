@@ -2,7 +2,7 @@ import yfinance as yf
 import pandas as pd
 import sys
 import os
-
+import logging
 # BIST 100 Hisseleri (Güncel Yaklaşım)
 BIST_STOCKS = [
     "AEFES.IS", "AGHOL.IS", "AHGAZ.IS", "AKBNK.IS", "AKCNS.IS", "AKFGY.IS", "AKSA.IS", "AKSEN.IS", "ALARK.IS", "ALBRK.IS", 
@@ -17,30 +17,39 @@ BIST_STOCKS = [
     "TUPRS.IS", "ULKER.IS", "VAKBN.IS", "VESBE.IS", "VESTL.IS", "YEOTK.IS", "YKBNK.IS", "YYLGD.IS", "ZOREN.IS", "KZBGY.IS"
 ]
 
+logging.disable(logging.CRITICAL)
+
 def fetch_data(stock_list=None, period="1y"):
     if stock_list is None:
         stock_list = BIST_STOCKS
-    data = {}
-    
-    # yfinance kütüphanesinin ekrana basabileceği 
-    # "Failed download" veya "possibly delisted" gibi hataları gizle
-    with open(os.devnull, 'w') as devnull:
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        try:
-            sys.stdout = devnull
-            sys.stderr = devnull
-            
-            for ticker in stock_list:
-                try:
-                    hist = yf.download(ticker, period=period, progress=False)
-                    if not hist.empty:
-                        data[ticker] = hist
-                except Exception:
-                    pass
-        finally:
-            # İşlem bitince çıktıları eski haline getir
-            sys.stdout = old_stdout
-            sys.stderr = old_stderr
-            
-    return data
+
+    try:
+        # Tüm hisseleri tek request ile çek
+        data = yf.download(
+            tickers=stock_list,
+            period=period,
+            group_by="ticker",
+            auto_adjust=False,
+            threads=True,
+            progress=False
+        )
+
+        result = {}
+
+        # Her hisseyi ayrı dataframe olarak ayır
+        for ticker in stock_list:
+            try:
+                if ticker in data.columns.levels[0]:
+                    df = data[ticker].dropna(how="all")
+
+                    if not df.empty:
+                        result[ticker] = df
+
+            except Exception:
+                pass
+
+        return result
+
+    except Exception as e:
+        print(f"Hata: {e}")
+        return {}
