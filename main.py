@@ -1,37 +1,96 @@
 import sys
-from budget_manager import load_budget, save_budget
+import os
+from budget_manager import load_budget, save_budget, load_portfolio, save_portfolio, set_profile, get_all_profiles, delete_profile, reset_current_profile
 from data_fetcher import fetch_data
-from analyzer import analyze_stocks
+from analyzer import analyze_stocks, evaluate_portfolio
 from optimizer import allocate_budget
+from logger import log_transaction, set_logger_profile
 
 def print_separator():
-    print("=" * 60)
+    print("=" * 70)
+
+def migrate_old_data():
+    if os.path.exists("butce.json") and not os.path.exists("default_butce.json"):
+        os.rename("butce.json", "default_butce.json")
+    if os.path.exists("islem_gecmisi.md") and not os.path.exists("default_islem_gecmisi.md"):
+        os.rename("islem_gecmisi.md", "default_islem_gecmisi.md")
+
+def init_profile():
+    print_separator()
+    print("    Portföy Seçim Ekranına Hoş Geldiniz")
+    print_separator()
+    
+    profiles = get_all_profiles()
+    
+    if profiles:
+        print("Sistemde Kayıtlı Portföyler:")
+        for i, p in enumerate(profiles):
+            print(f"{i+1}. {p}")
+        print("-" * 30)
+        print("1. Var olan bir portföyü seç")
+        print("2. Yeni bir portföy oluştur")
+        
+        choice = input("Seçiminiz (1/2): ").strip()
+        if choice == '1':
+            try:
+                p_idx = int(input("Girmek istediğiniz portföy numarası: ")) - 1
+                if 0 <= p_idx < len(profiles):
+                    p_name = profiles[p_idx]
+                else:
+                    print("Geçersiz numara! Yeni portföy oluşturma ekranına yönlendiriliyorsunuz...")
+                    p_name = input("Yeni Portföy (Kullanıcı) Adı: ").strip()
+            except ValueError:
+                print("Geçersiz giriş! Yeni portföy oluşturma ekranına yönlendiriliyorsunuz...")
+                p_name = input("Yeni Portföy (Kullanıcı) Adı: ").strip()
+        else:
+            p_name = input("Yeni Portföy (Kullanıcı) Adı: ").strip()
+    else:
+        print("Sistemde henüz kayıtlı bir portföy bulunmuyor.")
+        p_name = input("Yeni Portföy (Kullanıcı) Adı: ").strip()
+        
+    if not p_name:
+        p_name = "default"
+        
+    set_profile(p_name)
+    set_logger_profile(p_name)
+    print(f"\n--> [{p_name.upper()}] portföyü aktif edildi <--")
+    return p_name
 
 def main():
+    migrate_old_data()
+    active_profile = init_profile()
+    
     while True:
         budget = load_budget()
+        portfolio = load_portfolio()
         print("\n")
         print_separator()
-        print("    Borsa İstanbul Hisse Analiz ve Tavsiye Programı")
+        print(f"    Borsa İstanbul Hisse Analiz ve Tavsiye Programı - [{active_profile.upper()}]")
         print_separator()
         print(f"Mevcut Bütçeniz: {budget:.2f} TL")
+        print(f"Portföyünüzdeki Hisse Sayısı: {len(portfolio)}")
         print("\nMenü:")
         print("1. Bütçeyi Görüntüle / Güncelle")
-        print("2. Piyasayı Analiz Et ve Tavsiye Ver")
-        print("3. Çıkış")
+        print("2. Piyasayı Analiz Et ve Alım Tavsiyesi Ver")
+        print("3. Portföyümü Görüntüle ve Sat/Tut Tavsiyeleri Al")
+        print("4. Portföye Manuel Hisse Ekle")
+        print("5. Mevcut Portföyü Sıfırla veya Sil")
+        print("6. Çıkış / Diğer Portföye Geç")
         
-        choice = input("\nSeçiminiz (1/2/3): ")
+        choice = input("\nSeçiminiz (1/2/3/4/5/6): ")
         
         if choice == '1':
             try:
                 new_budget_str = input(f"Yeni bütçenizi girin (TL) [Mevcut: {budget:.2f}]: ")
                 if not new_budget_str.strip():
-                    continue # Boş bırakılırsa iptal
+                    continue
                 new_budget = float(new_budget_str)
                 if new_budget < 0:
                     print("Bütçe negatif olamaz!")
                 else:
+                    fark = new_budget - budget
                     save_budget(new_budget)
+                    log_transaction("Bütçe Güncelleme", "-", "-", "-", fark, new_budget)
                     print("Bütçeniz başarıyla güncellendi.")
             except ValueError:
                 print("Lütfen geçerli bir sayı girin.")
@@ -41,7 +100,7 @@ def main():
                 print("Lütfen önce bütçenizi güncelleyin (Bütçeniz 0 TL).")
                 continue
                 
-            print("\nPiyasa verileri çekiliyor, lütfen bekleyin... (Bu işlem birkaç saniye sürebilir)")
+            print("\nPiyasa verileri çekiliyor, lütfen bekleyin...")
             data_dict = fetch_data()
             
             print("Veriler analiz ediliyor...")
@@ -52,20 +111,20 @@ def main():
                 continue
                 
             print("\n*** POTANSİYEL HİSSELERE AİT TEKNİK ANALİZ SONUÇLARI ***")
-            for r in recommendations[:5]: # İlk 5'i göster
+            for r in recommendations[:5]:
                 print(f"- {r['Hisse']:<6}: Fiyat={r['Fiyat']:.2f} TL | Skor={r['Skor']}/3 | Neden: {r['Nedenler']}")
                 
             print("\nBütçenize göre portföy oluşturuluyor...")
-            portfolio, remaining = allocate_budget(budget, recommendations)
+            allocations, remaining = allocate_budget(budget, recommendations)
             
-            if not portfolio:
+            if not allocations:
                 print("Bütçeniz önerilen hisselerden almak için (en az 1 lot) yetersiz.")
             else:
                 print("\n" + "*" * 50)
                 print("        TAVSİYE EDİLEN PORTFÖY DAĞILIMI")
                 print("*" * 50)
                 total_spent = 0
-                for item in portfolio:
+                for item in allocations:
                     print(f"Hisse: {item['Hisse']:<6} | Lot: {item['Lot']:<4} | Fiyat: {item['Fiyat']:>7.2f} TL | Toplam: {item['Toplam Maliyet']:>8.2f} TL")
                     total_spent += item['Toplam Maliyet']
                     
@@ -73,11 +132,171 @@ def main():
                 print(f"Harcanan Toplam Bütçe: {total_spent:.2f} TL")
                 print(f"Kalan Nakit:          {remaining:.2f} TL")
                 
+            al_cevap = input("\nBu tavsiyelerden veya kendi tercihinizle hisse aldınız mı? (E/H): ").strip().upper()
+            if al_cevap == 'E':
+                hisse_kodu = input("Aldığınız Hisse Kodu (Örn: THYAO): ").strip().upper()
+                try:
+                    lot_miktari = int(input("Kaç Lot Aldınız: ").strip())
+                    alis_fiyati = float(input("Alış Fiyatınız (TL): ").strip())
+                    
+                    toplam_tutar = lot_miktari * alis_fiyati
+                    if toplam_tutar > budget:
+                        print(f"Hata: Alış tutarı ({toplam_tutar:.2f} TL) mevcut bütçenizden ({budget:.2f} TL) fazla olamaz!")
+                    else:
+                        if hisse_kodu in portfolio:
+                            mevcut_lot = portfolio[hisse_kodu]['lot']
+                            mevcut_maliyet = portfolio[hisse_kodu]['maliyet']
+                            yeni_lot = mevcut_lot + lot_miktari
+                            yeni_maliyet = ((mevcut_lot * mevcut_maliyet) + toplam_tutar) / yeni_lot
+                            portfolio[hisse_kodu] = {'lot': yeni_lot, 'maliyet': yeni_maliyet}
+                        else:
+                            portfolio[hisse_kodu] = {'lot': lot_miktari, 'maliyet': alis_fiyati}
+                            
+                        yeni_butce = budget - toplam_tutar
+                        save_portfolio(portfolio)
+                        save_budget(yeni_butce)
+                        log_transaction("Hisse Alım", hisse_kodu, lot_miktari, alis_fiyati, -toplam_tutar, yeni_butce)
+                        print(f"{hisse_kodu} başarıyla portföye eklendi. Yeni bütçeniz: {yeni_butce:.2f} TL")
+                except ValueError:
+                    print("Hatalı giriş yaptınız. Lütfen lot için tam sayı, fiyat için sayı girin.")
+                    
         elif choice == '3':
+            if not portfolio:
+                print("\nPortföyünüzde henüz hisse bulunmuyor.")
+                continue
+                
+            print("\nPortföy verileriniz için güncel piyasa fiyatları çekiliyor...")
+            from data_fetcher import BIST_STOCKS
+            fetch_list = list(set(BIST_STOCKS + [f"{t}.IS" for t in portfolio.keys()]))
+            data_dict = fetch_data(fetch_list)
+            
+            print("Portföyünüz değerlendiriliyor...")
+            evaluations = evaluate_portfolio(portfolio, data_dict)
+            
+            print("\n" + "=" * 70)
+            print(f"                 [{active_profile.upper()}] PORTFÖY DURUMU VE TAVSİYELER")
+            print("=" * 70)
+            
+            satilacaklar = []
+            toplam_portfoy_degeri = 0
+            
+            for ev in evaluations:
+                hisse = ev['Hisse']
+                lot = ev['Lot']
+                fiyat = ev['Fiyat']
+                maliyet = ev['Maliyet']
+                k_z = ev['K/Z %']
+                durum = ev['Durum']
+                neden = ev['Nedenler']
+                
+                guncel_tutar = lot * fiyat
+                toplam_portfoy_degeri += guncel_tutar
+                
+                print(f"Hisse: {hisse:<5} | Lot: {lot:<4} | Maliyet: {maliyet:>6.2f} | Güncel: {fiyat:>6.2f} | K/Z: %{k_z:>5.2f}")
+                print(f"   -> TAVSİYE: {durum} (Neden: {neden})")
+                print("-" * 70)
+                
+                if durum == 'Sat':
+                    satilacaklar.append(ev)
+                    
+            print(f"Portföydeki Hisselerin Toplam Değeri: {toplam_portfoy_degeri:.2f} TL")
+            
+            if satilacaklar:
+                sat_cevap = input("\nSat tavsiyesi verilen hisseleri (veya bir kısmını) satmak ister misiniz? (E/H): ").strip().upper()
+                if sat_cevap == 'E':
+                    satilan_hisse = input("Hangisini satmak istiyorsunuz? (Hisse kodunu yazın): ").strip().upper()
+                    
+                    if satilan_hisse in portfolio:
+                        try:
+                            sat_lot = int(input(f"Kaç lot satacaksınız? (Mevcut: {portfolio[satilan_hisse]['lot']}): "))
+                            if sat_lot <= 0 or sat_lot > portfolio[satilan_hisse]['lot']:
+                                print("Geçersiz lot miktarı!")
+                                continue
+                                
+                            guncel_fiyat = next((item['Fiyat'] for item in evaluations if item['Hisse'] == satilan_hisse), portfolio[satilan_hisse]['maliyet'])
+                            
+                            satis_geliri = sat_lot * guncel_fiyat
+                            yeni_butce = budget + satis_geliri
+                            
+                            portfolio[satilan_hisse]['lot'] -= sat_lot
+                            if portfolio[satilan_hisse]['lot'] == 0:
+                                del portfolio[satilan_hisse]
+                                
+                            save_portfolio(portfolio)
+                            save_budget(yeni_butce)
+                            log_transaction("Hisse Satım", satilan_hisse, sat_lot, guncel_fiyat, satis_geliri, yeni_butce)
+                            print(f"\n{satilan_hisse} satıldı. Satış Geliri: {satis_geliri:.2f} TL.")
+                            print(f"Yeni Bütçeniz: {yeni_butce:.2f} TL")
+                            
+                            print("\nNakitiniz arttı. Yeni bütçenizle alınabilecek hisseler hesaplanıyor...")
+                            recommendations = analyze_stocks(data_dict)
+                            allocations, remaining = allocate_budget(yeni_butce, recommendations)
+                            
+                            if allocations:
+                                print("\nİşte satılan hissenin yerine alınabilecek öneriler:")
+                                for item in allocations:
+                                    print(f"- {item['Hisse']:<6}: {item['Lot']} Lot alınabilir (Toplam: {item['Toplam Maliyet']:.2f} TL) | Neden: {item['Nedenler']}")
+                            else:
+                                print("Şu an yeni alım için uygun kriterde hisse bulunamadı.")
+                                
+                        except ValueError:
+                            print("Lütfen geçerli bir sayı girin.")
+                    else:
+                        print("Bu hisse portföyünüzde bulunmuyor.")
+
+        elif choice == '4':
+            hisse_kodu = input("Hisse Kodu (Örn: THYAO): ").strip().upper()
+            try:
+                lot_miktari = int(input("Kaç Lot: ").strip())
+                alis_fiyati = float(input("Maliyetiniz (TL): ").strip())
+                
+                toplam_tutar = lot_miktari * alis_fiyati
+                yeni_butce = budget - toplam_tutar
+                
+                if hisse_kodu in portfolio:
+                    mevcut_lot = portfolio[hisse_kodu]['lot']
+                    mevcut_maliyet = portfolio[hisse_kodu]['maliyet']
+                    yeni_lot = mevcut_lot + lot_miktari
+                    yeni_maliyet = ((mevcut_lot * mevcut_maliyet) + toplam_tutar) / yeni_lot
+                    portfolio[hisse_kodu] = {'lot': yeni_lot, 'maliyet': yeni_maliyet}
+                else:
+                    portfolio[hisse_kodu] = {'lot': lot_miktari, 'maliyet': alis_fiyati}
+                    
+                save_portfolio(portfolio)
+                save_budget(yeni_butce)
+                log_transaction("Manuel Hisse Ekleme", hisse_kodu, lot_miktari, alis_fiyati, -toplam_tutar, yeni_butce)
+                print(f"{hisse_kodu} portföye eklendi. İşlem tutarı bütçeden düşüldü. Yeni bütçeniz: {yeni_butce:.2f} TL")
+            except ValueError:
+                print("Hatalı giriş!")
+                
+        elif choice == '5':
+            print(f"\n--- [{active_profile.upper()}] Portföy Yönetimi ---")
+            print("1. Portföyü Sıfırla (Bütçe ve hisseler temizlenir, log dosyası korunur)")
+            print("2. Portföyü Tamamen Sil (Tüm kayıtlar ve log dosyası kalıcı olarak silinir)")
+            print("3. İptal")
+            
+            sub_choice = input("Seçiminiz: ").strip()
+            if sub_choice == '1':
+                onay = input(f"[{active_profile}] portföyündeki bütçe ve hisseler SIFIRLANACAK. Emin misiniz? (E/H): ").strip().upper()
+                if onay == 'E':
+                    reset_current_profile()
+                    log_transaction("Portföy Sıfırlama", "-", "-", "-", 0, 0)
+                    print(f"\n[{active_profile}] portföyü başarıyla sıfırlandı.")
+            elif sub_choice == '2':
+                onay = input(f"[{active_profile}] portföyü ve işlem geçmişi TAMAMEN SİLİNECEK. Emin misiniz? (E/H): ").strip().upper()
+                if onay == 'E':
+                    delete_profile(active_profile)
+                    print(f"\n[{active_profile}] portföyü kalıcı olarak silindi.")
+                    print("Ana ekrana yönlendiriliyorsunuz...")
+                    active_profile = init_profile()
+            else:
+                print("İşlem iptal edildi.")
+
+        elif choice == '6':
             print("Programdan çıkılıyor. Bol kazançlar!")
             sys.exit(0)
         else:
-            print("Geçersiz seçim, lütfen 1, 2 veya 3 girin.")
+            print("Geçersiz seçim.")
 
 if __name__ == "__main__":
     main()

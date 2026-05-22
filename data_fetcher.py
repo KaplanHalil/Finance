@@ -1,5 +1,7 @@
 import yfinance as yf
 import pandas as pd
+import sys
+import os
 
 # Örnek BIST30 hisseleri
 BIST_STOCKS = [
@@ -11,15 +13,30 @@ BIST_STOCKS = [
     "TUPRS.IS", "VAKBN.IS", "YKBNK.IS"
 ]
 
-def fetch_data(stock_list=BIST_STOCKS, period="3mo"):
+def fetch_data(stock_list=None, period="3mo"):
+    if stock_list is None:
+        stock_list = BIST_STOCKS
     data = {}
-    for ticker in stock_list:
+    
+    # yfinance kütüphanesinin ekrana basabileceği 
+    # "Failed download" veya "possibly delisted" gibi hataları gizle
+    with open(os.devnull, 'w') as devnull:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
         try:
-            # Sadece geçmiş veriyi çek, log veya progress bar gösterme
-            hist = yf.download(ticker, period=period, progress=False)
-            if not hist.empty:
-                data[ticker] = hist
-        except Exception as e:
-            # Hata veren hisseleri atla
-            pass
+            sys.stdout = devnull
+            sys.stderr = devnull
+            
+            for ticker in stock_list:
+                try:
+                    hist = yf.download(ticker, period=period, progress=False)
+                    if not hist.empty:
+                        data[ticker] = hist
+                except Exception:
+                    pass
+        finally:
+            # İşlem bitince çıktıları eski haline getir
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+            
     return data
