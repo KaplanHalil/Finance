@@ -55,3 +55,15 @@ Kullanıcının programı rahatça kullanabilmesi için komut satırı menüsü 
 ## 11. Portföy Yönetimi (Silme ve Sıfırlama) [TAMAMLANDI]
 - Ana menü üzerinden aktif portföyün içerisindeki bütçe ve hisselerin sıfırlanabilmesi (işlem geçmişi kalarak temiz bir başlangıç).
 - Mevcut portföyün veri tabanı (`json`) ve işlem geçmişi (`md`) dosyalarının diskten tamamen silinerek hesaba ait tüm izlerin yok edilmesi seçeneğinin eklenmesi.
+
+## 12. Gelişmiş İşlem Loglama (K/Z Oranları) [TAMAMLANDI]
+- İşlem geçmişi tablosuna "K/Z (TL)" ve "K/Z (%)" sütunlarının eklenmesi.
+- Hisse satış işlemlerinde gerçekleşen anlık kâr veya zararın hesaplanarak loga ve ekrana yansıtılması.
+- Eski log dosyalarının yapısının bozulmaması için otomatik kolon ekleme (migration) fonksiyonunun geliştirilmesi.
+
+## 13. Kesintisiz İşlem Akışı (Döngüler) [TAMAMLANDI]
+- Hisse alımı, manuel ekleme ve hisse satımı adımlarında kullanıcıya her işlemin ardından "Başka hisse var mı?" sorusu yöneltilerek peş peşe sınırsız işlem yapabilme esnekliği.
+
+## 14. BIST 100 Entegrasyonu ve Veri Kontrolü [TAMAMLANDI]
+- BIST30 olan analiz havuzunun BIST100 listesine çıkarılması.
+- Veri çekimi işlemi sonrasında kaç hissenin verisinin başarıyla indirildiğinin (Örn: 98/100) ekrana yazdırılması.

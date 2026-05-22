@@ -101,7 +101,9 @@ def main():
                 continue
                 
             print("\nPiyasa verileri çekiliyor, lütfen bekleyin...")
+            from data_fetcher import BIST_STOCKS
             data_dict = fetch_data()
+            print(f"> {len(data_dict)}/{len(BIST_STOCKS)} hissenin verisi başarıyla çekildi.")
             
             print("Veriler analiz ediliyor...")
             recommendations = analyze_stocks(data_dict)
@@ -134,31 +136,36 @@ def main():
                 
             al_cevap = input("\nBu tavsiyelerden veya kendi tercihinizle hisse aldınız mı? (E/H): ").strip().upper()
             if al_cevap == 'E':
-                hisse_kodu = input("Aldığınız Hisse Kodu (Örn: THYAO): ").strip().upper()
-                try:
-                    lot_miktari = int(input("Kaç Lot Aldınız: ").strip())
-                    alis_fiyati = float(input("Alış Fiyatınız (TL): ").strip())
-                    
-                    toplam_tutar = lot_miktari * alis_fiyati
-                    if toplam_tutar > budget:
-                        print(f"Hata: Alış tutarı ({toplam_tutar:.2f} TL) mevcut bütçenizden ({budget:.2f} TL) fazla olamaz!")
-                    else:
-                        if hisse_kodu in portfolio:
-                            mevcut_lot = portfolio[hisse_kodu]['lot']
-                            mevcut_maliyet = portfolio[hisse_kodu]['maliyet']
-                            yeni_lot = mevcut_lot + lot_miktari
-                            yeni_maliyet = ((mevcut_lot * mevcut_maliyet) + toplam_tutar) / yeni_lot
-                            portfolio[hisse_kodu] = {'lot': yeni_lot, 'maliyet': yeni_maliyet}
+                while True:
+                    hisse_kodu = input("\nAldığınız Hisse Kodu (Örn: THYAO): ").strip().upper()
+                    try:
+                        lot_miktari = int(input(f"[{hisse_kodu}] Kaç Lot Aldınız: ").strip())
+                        alis_fiyati = float(input(f"[{hisse_kodu}] Alış Fiyatınız (TL): ").strip())
+                        
+                        toplam_tutar = lot_miktari * alis_fiyati
+                        if toplam_tutar > budget:
+                            print(f"Hata: Alış tutarı ({toplam_tutar:.2f} TL) mevcut bütçenizden ({budget:.2f} TL) fazla olamaz!")
                         else:
-                            portfolio[hisse_kodu] = {'lot': lot_miktari, 'maliyet': alis_fiyati}
-                            
-                        yeni_butce = budget - toplam_tutar
-                        save_portfolio(portfolio)
-                        save_budget(yeni_butce)
-                        log_transaction("Hisse Alım", hisse_kodu, lot_miktari, alis_fiyati, -toplam_tutar, yeni_butce)
-                        print(f"{hisse_kodu} başarıyla portföye eklendi. Yeni bütçeniz: {yeni_butce:.2f} TL")
-                except ValueError:
-                    print("Hatalı giriş yaptınız. Lütfen lot için tam sayı, fiyat için sayı girin.")
+                            if hisse_kodu in portfolio:
+                                mevcut_lot = portfolio[hisse_kodu]['lot']
+                                mevcut_maliyet = portfolio[hisse_kodu]['maliyet']
+                                yeni_lot = mevcut_lot + lot_miktari
+                                yeni_maliyet = ((mevcut_lot * mevcut_maliyet) + toplam_tutar) / yeni_lot
+                                portfolio[hisse_kodu] = {'lot': yeni_lot, 'maliyet': yeni_maliyet}
+                            else:
+                                portfolio[hisse_kodu] = {'lot': lot_miktari, 'maliyet': alis_fiyati}
+                                
+                            budget -= toplam_tutar
+                            save_portfolio(portfolio)
+                            save_budget(budget)
+                            log_transaction("Hisse Alım", hisse_kodu, lot_miktari, alis_fiyati, -toplam_tutar, budget)
+                            print(f"{hisse_kodu} başarıyla portföye eklendi. Kalan Bütçeniz: {budget:.2f} TL")
+                    except ValueError:
+                        print("Hatalı giriş yaptınız. Lütfen lot için tam sayı, fiyat için sayı girin.")
+                        
+                    baska = input("\nAldığınız başka hisse var mı? (E/H): ").strip().upper()
+                    if baska != 'E':
+                        break
                     
         elif choice == '3':
             if not portfolio:
@@ -169,6 +176,7 @@ def main():
             from data_fetcher import BIST_STOCKS
             fetch_list = list(set(BIST_STOCKS + [f"{t}.IS" for t in portfolio.keys()]))
             data_dict = fetch_data(fetch_list)
+            print(f"> {len(data_dict)}/{len(fetch_list)} hissenin verisi başarıyla çekildi.")
             
             print("Portföyünüz değerlendiriliyor...")
             evaluations = evaluate_portfolio(portfolio, data_dict)
@@ -201,73 +209,93 @@ def main():
                     
             print(f"Portföydeki Hisselerin Toplam Değeri: {toplam_portfoy_degeri:.2f} TL")
             
-            if satilacaklar:
-                sat_cevap = input("\nSat tavsiyesi verilen hisseleri (veya bir kısmını) satmak ister misiniz? (E/H): ").strip().upper()
-                if sat_cevap == 'E':
-                    satilan_hisse = input("Hangisini satmak istiyorsunuz? (Hisse kodunu yazın): ").strip().upper()
+            sat_cevap = input("\nPortföyünüzdeki herhangi bir hisseyi satmak ister misiniz? (E/H): ").strip().upper()
+            if sat_cevap == 'E':
+                satis_yapildi = False
+                while True:
+                    satilan_hisse = input("\nHangisini satmak istiyorsunuz? (Hisse kodunu yazın): ").strip().upper()
                     
                     if satilan_hisse in portfolio:
                         try:
                             sat_lot = int(input(f"Kaç lot satacaksınız? (Mevcut: {portfolio[satilan_hisse]['lot']}): "))
                             if sat_lot <= 0 or sat_lot > portfolio[satilan_hisse]['lot']:
                                 print("Geçersiz lot miktarı!")
-                                continue
-                                
-                            guncel_fiyat = next((item['Fiyat'] for item in evaluations if item['Hisse'] == satilan_hisse), portfolio[satilan_hisse]['maliyet'])
-                            
-                            satis_geliri = sat_lot * guncel_fiyat
-                            yeni_butce = budget + satis_geliri
-                            
-                            portfolio[satilan_hisse]['lot'] -= sat_lot
-                            if portfolio[satilan_hisse]['lot'] == 0:
-                                del portfolio[satilan_hisse]
-                                
-                            save_portfolio(portfolio)
-                            save_budget(yeni_butce)
-                            log_transaction("Hisse Satım", satilan_hisse, sat_lot, guncel_fiyat, satis_geliri, yeni_butce)
-                            print(f"\n{satilan_hisse} satıldı. Satış Geliri: {satis_geliri:.2f} TL.")
-                            print(f"Yeni Bütçeniz: {yeni_butce:.2f} TL")
-                            
-                            print("\nNakitiniz arttı. Yeni bütçenizle alınabilecek hisseler hesaplanıyor...")
-                            recommendations = analyze_stocks(data_dict)
-                            allocations, remaining = allocate_budget(yeni_butce, recommendations)
-                            
-                            if allocations:
-                                print("\nİşte satılan hissenin yerine alınabilecek öneriler:")
-                                for item in allocations:
-                                    print(f"- {item['Hisse']:<6}: {item['Lot']} Lot alınabilir (Toplam: {item['Toplam Maliyet']:.2f} TL) | Neden: {item['Nedenler']}")
                             else:
-                                print("Şu an yeni alım için uygun kriterde hisse bulunamadı.")
+                                guncel_fiyat = next((item['Fiyat'] for item in evaluations if item['Hisse'] == satilan_hisse), portfolio[satilan_hisse]['maliyet'])
+                                maliyet_fiyati = portfolio[satilan_hisse]['maliyet']
+                                
+                                kar_zarar_tl = (guncel_fiyat - maliyet_fiyati) * sat_lot
+                                kar_zarar_yuzde = ((guncel_fiyat - maliyet_fiyati) / maliyet_fiyati) * 100 if maliyet_fiyati > 0 else 0
+                                
+                                satis_geliri = sat_lot * guncel_fiyat
+                                budget += satis_geliri
+                                
+                                portfolio[satilan_hisse]['lot'] -= sat_lot
+                                if portfolio[satilan_hisse]['lot'] == 0:
+                                    del portfolio[satilan_hisse]
+                                    
+                                save_portfolio(portfolio)
+                                save_budget(budget)
+                                log_transaction("Hisse Satım", satilan_hisse, sat_lot, guncel_fiyat, satis_geliri, budget, kar_zarar_tl, kar_zarar_yuzde)
+                                print(f"\n{satilan_hisse} satıldı. Satış Geliri: {satis_geliri:.2f} TL.")
+                                print(f"İşlemden Elde Edilen K/Z: {kar_zarar_tl:+.2f} TL (%{kar_zarar_yuzde:+.2f})")
+                                print(f"Yeni Bütçeniz: {budget:.2f} TL")
+                                satis_yapildi = True
                                 
                         except ValueError:
                             print("Lütfen geçerli bir sayı girin.")
                     else:
                         print("Bu hisse portföyünüzde bulunmuyor.")
+                        
+                    if not portfolio:
+                        print("\nPortföyünüzde satılacak hisse kalmadı.")
+                        break
+                        
+                    baska_sat = input("\nSatmak istediğiniz başka hisse var mı? (E/H): ").strip().upper()
+                    if baska_sat != 'E':
+                        break
+                        
+                if satis_yapildi:
+                    print("\nNakitiniz güncellendi. Yeni bütçenizle alınabilecek hisseler hesaplanıyor...")
+                    recommendations = analyze_stocks(data_dict)
+                    allocations, remaining = allocate_budget(budget, recommendations)
+                    
+                    if allocations:
+                        print("\nİşte sattığınız hisselerin yerine alınabilecek öneriler:")
+                        for item in allocations:
+                            print(f"- {item['Hisse']:<6}: {item['Lot']} Lot alınabilir (Toplam: {item['Toplam Maliyet']:.2f} TL) | Neden: {item['Nedenler']}")
+                    else:
+                        print("Şu an yeni alım için uygun kriterde hisse bulunamadı.")
 
         elif choice == '4':
-            hisse_kodu = input("Hisse Kodu (Örn: THYAO): ").strip().upper()
-            try:
-                lot_miktari = int(input("Kaç Lot: ").strip())
-                alis_fiyati = float(input("Maliyetiniz (TL): ").strip())
-                
-                toplam_tutar = lot_miktari * alis_fiyati
-                yeni_butce = budget - toplam_tutar
-                
-                if hisse_kodu in portfolio:
-                    mevcut_lot = portfolio[hisse_kodu]['lot']
-                    mevcut_maliyet = portfolio[hisse_kodu]['maliyet']
-                    yeni_lot = mevcut_lot + lot_miktari
-                    yeni_maliyet = ((mevcut_lot * mevcut_maliyet) + toplam_tutar) / yeni_lot
-                    portfolio[hisse_kodu] = {'lot': yeni_lot, 'maliyet': yeni_maliyet}
-                else:
-                    portfolio[hisse_kodu] = {'lot': lot_miktari, 'maliyet': alis_fiyati}
+            while True:
+                hisse_kodu = input("\nHisse Kodu (Örn: THYAO): ").strip().upper()
+                try:
+                    lot_miktari = int(input(f"[{hisse_kodu}] Kaç Lot: ").strip())
+                    alis_fiyati = float(input(f"[{hisse_kodu}] Maliyetiniz (TL): ").strip())
                     
-                save_portfolio(portfolio)
-                save_budget(yeni_butce)
-                log_transaction("Manuel Hisse Ekleme", hisse_kodu, lot_miktari, alis_fiyati, -toplam_tutar, yeni_butce)
-                print(f"{hisse_kodu} portföye eklendi. İşlem tutarı bütçeden düşüldü. Yeni bütçeniz: {yeni_butce:.2f} TL")
-            except ValueError:
-                print("Hatalı giriş!")
+                    toplam_tutar = lot_miktari * alis_fiyati
+                    budget -= toplam_tutar
+                    
+                    if hisse_kodu in portfolio:
+                        mevcut_lot = portfolio[hisse_kodu]['lot']
+                        mevcut_maliyet = portfolio[hisse_kodu]['maliyet']
+                        yeni_lot = mevcut_lot + lot_miktari
+                        yeni_maliyet = ((mevcut_lot * mevcut_maliyet) + toplam_tutar) / yeni_lot
+                        portfolio[hisse_kodu] = {'lot': yeni_lot, 'maliyet': yeni_maliyet}
+                    else:
+                        portfolio[hisse_kodu] = {'lot': lot_miktari, 'maliyet': alis_fiyati}
+                        
+                    save_portfolio(portfolio)
+                    save_budget(budget)
+                    log_transaction("Manuel Hisse Ekleme", hisse_kodu, lot_miktari, alis_fiyati, -toplam_tutar, budget)
+                    print(f"{hisse_kodu} portföye eklendi. İşlem tutarı bütçeden düşüldü. Yeni bütçeniz: {budget:.2f} TL")
+                except ValueError:
+                    print("Hatalı giriş!")
+                    
+                baska = input("\nEkleyeceğiniz başka hisse var mı? (E/H): ").strip().upper()
+                if baska != 'E':
+                    break
                 
         elif choice == '5':
             print(f"\n--- [{active_profile.upper()}] Portföy Yönetimi ---")
