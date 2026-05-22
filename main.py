@@ -5,9 +5,43 @@ from data_fetcher import fetch_data
 from analyzer import analyze_stocks, evaluate_portfolio
 from optimizer import allocate_budget
 from logger import log_transaction, set_logger_profile
+from shutil import get_terminal_size
+
+try:
+    from colorama import init as _colorama_init, Fore, Style
+    _colorama_init()
+    COLORAMA_AVAILABLE = True
+except Exception:
+    COLORAMA_AVAILABLE = False
+    class Fore:  # fallback no-op
+        RED = GREEN = YELLOW = BLUE = MAGENTA = CYAN = RESET = ''
+    class Style:
+        BRIGHT = NORMAL = RESET_ALL = ''
 
 def print_separator():
     print("=" * 70)
+
+
+def _colored(text: str, color: str = None, bright: bool = False) -> str:
+    if not COLORAMA_AVAILABLE or not color:
+        return text
+    col = getattr(Fore, color.upper(), '')
+    style = Style.BRIGHT if bright else ''
+    return f"{style}{col}{text}{Style.RESET_ALL}"
+
+
+def print_banner():
+    term_width = get_terminal_size((80, 20)).columns
+    w = min(66, max(40, term_width - 10))
+    title = "Borsa İstanbul Hisse Analiz ve Tavsiye Programı"
+    subtitle = "Portföy Yönetim Konsolu"
+    top = "╔" + "═" * w + "╗"
+    bottom = "╚" + "═" * w + "╝"
+    print(_colored(top, 'cyan', True))
+    print(_colored("║" + title.center(w) + "║", 'green', True))
+    print(_colored("║" + subtitle.center(w) + "║", 'yellow'))
+    print(_colored(bottom, 'cyan', True))
+    print()
 
 def migrate_old_data():
     if os.path.exists("butce.json") and not os.path.exists("default_butce.json"):
@@ -18,34 +52,33 @@ def migrate_old_data():
         os.rename("islem_gecmisi.txt", "default_islem_gecmisi.txt")
 
 def init_profile():
-    print_separator()
-    print("    Portföy Seçim Ekranına Hoş Geldiniz")
-    print_separator()
-    
+    print_banner()
+    print(_colored("Hoş geldiniz! Lütfen bir portföy seçin veya yenisini oluşturun.", 'magenta'))
+    print()
     profiles = get_all_profiles()
     
     if profiles:
-        print("Sistemde Kayıtlı Portföyler:")
+        print(_colored("Sistemde Kayıtlı Portföyler:", 'cyan', True))
         for i, p in enumerate(profiles):
-            print(f"{i+1}. {p}")
-        print("-" * 30)
-        print("1. Var olan bir portföyü seç")
-        print("2. Yeni bir portföy oluştur")
-        
-        choice = input("Seçiminiz (1/2): ").strip()
+            print(_colored(f" {i+1}. ", 'yellow', True) + _colored(f"{p}", 'green'))
+        print("-" * 40)
+        print(_colored("1. Var olan bir portföyü seç", 'blue'))
+        print(_colored("2. Yeni bir portföy oluştur", 'blue'))
+
+        choice = input(_colored("Seçiminiz (1/2): ", 'magenta')).strip()
         if choice == '1':
             try:
-                p_idx = int(input("Girmek istediğiniz portföy numarası: ")) - 1
+                p_idx = int(input(_colored("Girmek istediğiniz portföy numarası: ", 'magenta'))) - 1
                 if 0 <= p_idx < len(profiles):
                     p_name = profiles[p_idx]
                 else:
-                    print("Geçersiz numara! Yeni portföy oluşturma ekranına yönlendiriliyorsunuz...")
-                    p_name = input("Yeni Portföy (Kullanıcı) Adı: ").strip()
+                    print(_colored("Geçersiz numara! Yeni portföy oluşturma ekranına yönlendiriliyorsunuz...", 'red'))
+                    p_name = input(_colored("Yeni Portföy (Kullanıcı) Adı: ", 'magenta')).strip()
             except ValueError:
-                print("Geçersiz giriş! Yeni portföy oluşturma ekranına yönlendiriliyorsunuz...")
-                p_name = input("Yeni Portföy (Kullanıcı) Adı: ").strip()
+                print(_colored("Geçersiz giriş! Yeni portföy oluşturma ekranına yönlendiriliyorsunuz...", 'red'))
+                p_name = input(_colored("Yeni Portföy (Kullanıcı) Adı: ", 'magenta')).strip()
         else:
-            p_name = input("Yeni Portföy (Kullanıcı) Adı: ").strip()
+            p_name = input(_colored("Yeni Portföy (Kullanıcı) Adı: ", 'magenta')).strip()
     else:
         print("Sistemde henüz kayıtlı bir portföy bulunmuyor.")
         p_name = input("Yeni Portföy (Kullanıcı) Adı: ").strip()
@@ -66,11 +99,10 @@ def main():
         budget = load_budget()
         portfolio = load_portfolio()
         print("\n")
-        print_separator()
-        print(f"    Borsa İstanbul Hisse Analiz ve Tavsiye Programı - [{active_profile.upper()}]")
-        print_separator()
-        print(f"Mevcut Bütçeniz: {budget:.2f} TL")
-        print(f"Portföyünüzdeki Hisse Sayısı: {len(portfolio)}")
+        print_banner()
+        print(_colored(f"Aktif Portföy: ", 'yellow', True) + _colored(f"[{active_profile.upper()}]", 'green', True))
+        print(_colored(f"Mevcut Bütçeniz: ", 'yellow') + _colored(f"{budget:.2f} TL", 'green'))
+        print(_colored(f"Portföyünüzdeki Hisse Sayısı: ", 'yellow') + _colored(f"{len(portfolio)}", 'green'))
         print("\nMenü:")
         print("1. Bütçeyi Görüntüle / Güncelle")
         print("2. Piyasayı Analiz Et ve Alım Tavsiyesi Ver")
