@@ -1,0 +1,40 @@
+# Borsa İstanbul Hisse Analiz ve Tavsiye Programı - Proje Planı
+
+Bu dosya, Türkiye borsasındaki hisseleri inceleyip, kullanıcının bütçesine göre yatırım tavsiyesi veren programın adım adım yapım aşamalarını içermektedir.
+
+## 1. Ortam Kurulumu ve Kullanılacak Teknolojiler [TAMAMLANDI]
+- Programlama Dili: Python (Veri analizi ve internetten veri çekme konularında en zengin kütüphanelere sahiptir.)
+- Kütüphaneler:
+  - yfinance veya requests: Borsa verilerini canlı/gecikmeli olarak internetten çekmek için.
+  - pandas: Verileri tablo formatında tutmak ve işlemek için.
+  - ta (Technical Analysis): RSI, MACD, Hareketli Ortalamalar gibi teknik analiz göstergelerini hesaplamak için.
+
+## 2. Veri Çekme Modülünün Geliştirilmesi [TAMAMLANDI]
+- BIST100, BIST30 veya kullanıcının belirleyeceği bir hisse havuzunun (Örn: THYAO.IS, ASELS.IS vb.) belirlenmesi.
+- Program her çalıştığında bu hisselerin en güncel fiyat, hacim ve geçmiş verilerinin anlık olarak çekilmesi.
+
+## 3. Bütçe Yönetimi Modülünün Hazırlanması [TAMAMLANDI]
+- Kullanıcı ilk defa girdiğinde veya bütçesini güncellemek istediğinde verinin alınması.
+- Bütçenin "butce.json" gibi yerel bir dosyada veya SQLite veritabanında saklanması.
+- Program tekrar açıldığında önceki bütçenin otomatik olarak yüklenebilmesi.
+
+## 4. Analiz ve Algoritma Geliştirilmesi [TAMAMLANDI]
+- Hisselere "Al", "Sat" veya "Tut" tavsiyesi verecek mantıksal/matematiksel modelin yazılması.
+- Örnek Strateji: 
+  - Hisse düşüş trendini kırmış mı?
+  - RSI değeri çok mu düşük (Aşırı satım bölgesi - ucuzlamış mı)?
+  - Temel hareketli ortalamaların (50 ve 200 günlük) üzerinde mi?
+
+## 5. Bütçe Optimizasyonu ve Lot Hesaplama [TAMAMLANDI]
+- Algoritmanın önerdiği hisseler arasından, kullanıcının elindeki bütçeye en uygun sepetin oluşturulması.
+- Her hissenin güncel fiyatına göre o hisseden kaç adet (Lot) alınabileceğinin ve kalan küsurat bütçesinin hesaplanması.
+
+## 6. Kullanıcı Arayüzü (CLI / Konsol Menüsü) [TAMAMLANDI]
+Kullanıcının programı rahatça kullanabilmesi için komut satırı menüsü hazırlanması:
+1. Bütçeyi Görüntüle / Güncelle
+2. Piyasayı Analiz Et ve Tavsiye Ver
+3. Çıkış
+
+## 7. Test ve İyileştirmeler [TAMAMLANDI]
+- İnternet bağlantısı koptuğunda veya hisse verisi gelmediğinde programın çökmesini engelleyecek hata kontrol yapılarının eklenmesi.
+- Çıktıların görsel olarak daha anlaşılır (renkli ve düzenli) formatta ekrana basılması.
